@@ -1,24 +1,46 @@
 <?php
-// Check for empty fields
-if(empty($_POST['name'])  		||
-   empty($_POST['email']) 		||
-   empty($_POST['message'])	||
-   !filter_var($_POST['email'],FILTER_VALIDATE_EMAIL))
-   {
-	echo "No arguments Provided!";
-	return false;
-   }
-	
-$name = $_POST['name'];
-$email_address = $_POST['email'];
-$message = $_POST['message'];
-	
-// Create the email and send the message
-$to = 'polyos.caf@gmail.com'; // Add your email address inbetween the '' replacing yourname@yourdomain.com - This is where the form will send a message to.
-$email_subject = "Website Contact Form:  $name";
-$email_body = "You have received a new message from your website contact form.\n\n"."Here are the details:\n\nName: $name\n\nEmail: $email_address\n\nMessage:\n$message";
-$headers = "From: noreply@yourdomain.com\n"; // This is the email address the generated message will be from. We recommend using something like noreply@yourdomain.com.
-$headers .= "Reply-To: $email_address";	
-mail($to,$email_subject,$email_body,$headers);
-return true;			
-?>
+session_start();
+require_once 'libs/phpmailer/PHPMailerAutoload.php';
+
+$errors =[];
+
+if(isset($_POST['name'],$_POST['email'],$_POST['message'])){
+    $fields=[
+        'name'=>$_POST['name'],
+        'email'=>$_POST['email'],
+        'message'=>$_POST['message']
+    ];
+    foreach($fields as $field=>$data){
+        if(empty($data)){
+            $errors[]='The '.$field . ' field is required.';
+        }
+    }
+    if(empty($errors)){
+        $m=new PHPMailer;
+        $m->isSMTP();
+        $m->SMTPAuth=true;
+        $m->Host='smtp.gmail.com';
+        $m->Username='someone@gmail.com';//replace with your email address
+        $m->Password='password';//replace with your password
+        $m->SMTPSecure='ssl';
+        $m->Port=465;
+
+        $m->isHTML();
+        $m->Subject ='Contact form Submitted';
+        $m->Body='From:'.$fields['name'].'('.$fields['email'].')<p>'.$fields['message'].'</p>';
+
+        $m->FromName='Contact';
+        $m->AddAddress('someone@gmail.com','Some one');
+        if ($m->send()) {
+            header('Location:thanks.php');
+            die();
+        }else{
+            $errors[]="Sorry ,Could not send email.Try again later.";
+        }
+    }
+}else{
+    $errors[]= 'Something went wrong';
+}
+$_SESSION['errors']=$errors;
+$_SESSION['fields']=$fields;
+header ('Location:index.php');
